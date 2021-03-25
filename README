@@ -1,0 +1,169 @@
+﻿Welcome to Lean's  git source of OpenWrt and packages
+ 
+ 这是我fork Lean的lede的源来编译自己的固件。同时也分享我的体会。
+ 
+ https://p3terx.com/archives/build-openwrt-with-github-actions.html
+ 
+ 最新实现使用github的actions的想法是p3terx，他自己的github上提供了一个OpenWRT-Actions的代码。Lean参考，把自己的Lede的代码支持github action。
+ 
+ 他们两个的实现方式是有点差异的。
+ 
+ 
+ p3terx的github-actions，是用户角度去编译固件，就是编译一个属于自己的固件。最明显看到的一个差异，就是每次都git clone 最新的lede的代码过来编译。
+ 
+ lede上的openwrt-ci.yml，是在开发者角度，开发的新的功能，进行编译。
+ 
+ 我是基于lede的openwrt-ci.yml，参考p3terx的github-actions，做了一些调整，这个过程也让我学到了很多东西。
+ 
+ lean
+ https://github.com/coolsnowwolf/lede/blob/master/.github/workflows/openwrt-ci.yml
+ 
+  p3terx
+  https://github.com/P3TERX/Actions-OpenWrt/blob/master/.github/workflows/build-openwrt.yml
+  
+  我基本算是合二为一。在lean上，实现的p3terx的github-actions上我需要的功能。
+  
+  一：触发
+  改成通过star 来触发，这样其实也方便我自己调试。我修改代码，其实也是web，没使用git 工具，有时候需要同时修改几个文件，那么通过star来控制编译，比较可控。
+  
+  二：环境变量
+  
+  加入环境变量，让openwrt-ci.yml维护容易。
+  
+  三：ssh功能
+  
+  可以ssh到github actions的编译环境，默认是关闭，你可以通过上面的环境变量，实现修改。这样方便很多。
+  
+  你可以通过ssh功能，查询到自己希望编译固件的cpu的型号写法，放到openwrt-ci.yml
+  
+  四：修改默认ip地址
+  
+  Openwrt默认的ip地址：192.168.1.1，你编译代码前，是可以把地址修改了。不过更加优雅的方式是使用脚本，来修改默认的ip 地址。同时这个脚本不仅仅可以修改ip地址。
+  
+  后续开始编译前的定制化，都是可以通过这个脚本进行。
+  
+  目前把把需要整合外面的app的下载，是放到这个脚本进行，这样让让openwrt-ci.yml，更加容易维护。
+  
+  五：cpu和包的定制
+  
+  lean的代码，默认是编译x86，如果选择x86，就会有大量的包编译进去，如果是非x86，那么就需要你选择。
+  
+  我在openwrt-ci.yml 加入的极路由的cpu的地址。删除一些我认为没用的app。
+  
+  
+  六：打包配置文件
+  
+  编译是使用 .config 文件进行编译，把这个config文件，打包到压缩包里，这样你可以方便查看。
+  
+  notepad++删除注释行和空白行
+https://blog.csdn.net/xiaoxiaojavacsdn/article/details/80190280
+
+1,删除配置文件的注释行,假设以#号开头
+
+    正则匹配 ^#.*
+    
+  2,删除空白行
+
+非常实用的功能。
+
+七：关闭ipv6
+
+我就是通过查看config文件，搞定关闭ipv6的参数。
+
+
+八：目录
+
+ p3terx，他是通过git 代码回来，创建了openwrt目录，而 lean是上传当前代码去编译。是lede目录下，
+ 
+ 所以我们进行 make menuconfig 
+ 
+ 是不需要进入openwrt目录的。这个需要理解他们的差异。
+  
+  九：file大法
+  
+  其实这是 p3terx提到，在根目录建立一个file的目录，需要就copy就可以。
+  
+  lede上的openwrt-ci.yml，默认是没带任何编译的包的。默认就是x86，系统默认。
+  
+  你可以修改openwrt-ci.yml，或者在根目录放一个.config 文件，例如我有一个极路由的配置文件，一个树莓派的配置文件，只需要copy一下，就可以解决这个问题。
+  
+  这个其实没验证，已经看到别人这样实践的例子，和我理解完全一样。
+  
+  
+  十：默认软件
+  include/target.mk
+  
+  根据需要定制。
+  
+ 
+ 
+ 视频分享
+ https://www.vediotalk.com/archives/6827
+ 
+
+cd openwrt && make menuconfig
+
+可以参考
+https://github.com/Lienol/openwrt-actions/blob/master/.github/workflows/X64-master.yml
+
+基本都能理解脚本。
+
+中文：如何编译自己需要的 OpenWrt 固件
+
+注意：
+1. 不要用 root 用户 git 和编译！！！
+2. 国内用户编译前最好准备好梯子
+3. 默认登陆IP 192.168.1.1, 密码 password
+
+编译命令如下:
+
+1. 首先装好 Ubuntu 64bit，推荐  Ubuntu  14 LTS x64
+
+2. 命令行输入 sudo apt-get update ，然后输入
+sudo apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch python3 unzip zlib1g-dev lib32gcc1 libc6-dev-i386 subversion flex uglifyjs git-core gcc-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler
+
+3. git clone https://github.com/coolsnowwolf/lede 命令下载好源代码，然后 cd lede 进入目录
+
+4. ./scripts/feeds update -a 
+   ./scripts/feeds install -a
+   make menuconfig 
+
+5. 最后选好你要的路由，输入 make -j1 V=s （-j1 后面是线程数。第一次编译推荐用单线程，国内请尽量全局科学上网）即可开始编译你要的固件了。
+
+本套代码保证肯定可以编译成功。里面包括了 R9 所有源代码，包括 IPK 的。
+
+你可以自由使用，但源码编译二次发布请注明我的 GitHub 仓库链接。谢谢合作！
+
+特别提示：
+1.源代码中绝不含任何后门和可以监控或者劫持你的 HTTPS 的闭源软件，SSL 安全是互联网最后的壁垒。安全干净才是固件应该做到的；
+2.如有技术问题需要讨论，欢迎加入 QQ 讨论群：OP共享技术交流群 ,号码 297253733 ，加群链接: 点击链接加入群聊【OP共享技术交流群】：https://jq.qq.com/?_wv=1027&k=5yCRuXL
+3. 想学习OpenWrt开发，但是摸不着门道？自学没毅力？基础太差？怕太难学不会？跟着佐大学OpenWrt开发入门培训班助你能学有所成
+报名地址：http://forgotfun.org/2018/04/openwrt-training-2018.html
+
+
+Please use "make menuconfig" to choose your preferred
+configuration for the toolchain and firmware.
+
+You need gcc, binutils, bzip2, flex, python3.5+, perl, make, find, grep, diff, unzip, gawk, getopt, subversion, libz-dev and libc headers installed.
+
+Run "./scripts/feeds update -a" to get all the latest package definitions
+defined in feeds.conf / feeds.conf.default respectively
+and "./scripts/feeds install -a" to install symlinks of all of them into
+package/feeds/.
+
+Use "make menuconfig" to configure your image.
+
+Simply running "make" will build your firmware.
+It will download all sources, build the cross-compile toolchain, 
+the kernel and all choosen applications.
+
+To build your own firmware you need to have access to a Linux, BSD or MacOSX system
+(case-sensitive filesystem required). Cygwin will not be supported because of
+the lack of case sensitiveness in the file system.
+
+
+
+Note: Addition Lean's private package source code in ./package/lean directory. Use it under GPL v3.
+
+GPLv3 is compatible with more licenses than GPLv2: it allows you to make combinations with code that has specific kinds of additional requirements that are not in GPLv3 itself. Section 7 has more information about this, including the list of additional requirements that are permitted.
+
